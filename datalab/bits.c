@@ -143,8 +143,7 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  x = ~x;
-  int xor = x & y;
+  int xor = ~(~(~x & y) & ~(x & ~y));
   return xor;
 }
 
@@ -171,9 +170,11 @@ int tmin(void) {
 
 // 0 1 1 1 1 1 1 1
 int isTmax(int x) {
-  int min = x + 1;
-  int and = min & x;
-  return !and;
+  int y = x + 1;          
+  int cond1 = x ^ ~y;     
+  int cond2 = !y;         
+  
+  return !(cond1 + cond2); 
 }
 
 /* 
@@ -186,8 +187,8 @@ int isTmax(int x) {
  */
 
 int allOddBits(int x) {
-  int odd = 0xAA + (0xAA << 2) + (0xAA << 4) + (0xAA << 6);
-  return x == odd;
+  int odd = 0xAA + (0xAA << 8) + (0xAA << 16) + (0xAA << 24);
+  return !((x & odd) ^ odd);
 }
 /* 
  * negate - return -x 
@@ -199,7 +200,7 @@ int allOddBits(int x) {
 int negate(int x) {
   return ~x + 1;
 }
-//3
+
 /* 
  * isAsciiDigit - return 1 if 0x30 <= x <= 0x39 (ASCII codes for characters '0' to '9')
  *   Example: isAsciiDigit(0x35) = 1.
@@ -209,9 +210,10 @@ int negate(int x) {
  *   Max ops: 15
  *   Rating: 3
  */
-
+// 0011 1001
+// 0011 0000
 int isAsciiDigit(int x) {
-
+                 
   return 2;
 }
 
@@ -223,9 +225,8 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  int a = !x;
-  int list[2] = {y,z};
-  return list[a];
+  x = !!x;
+  return (~((x + ~1 + 1) | ~y)) | ((x + ~1 + 1) & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -236,7 +237,7 @@ int conditional(int x, int y, int z) {
  */
 int isLessOrEqual(int x, int y) {
   int p = x + ~y; 
-  return p >> 31;
+  return !(p >> 31);
 }
 //4
 /* 
@@ -247,11 +248,12 @@ int isLessOrEqual(int x, int y) {
  *   Max ops: 12
  *   Rating: 4 
  */
+
 int logicalNeg(int x) {
-  unsigned n = (unsigned) x;
-  int z = n | 0;
-  return (int) z;
+  
+  return 2;
 }
+
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
  *  Examples: howManyBits(12) = 5
@@ -264,16 +266,32 @@ int logicalNeg(int x) {
  *  Max ops: 90
  *  Rating: 4
  */
+
 int howManyBits(int x) {
-  unsigned u = (unsigned) x;
-  int bits = 0;
-  if (u >= (1 << 16)) { u >>= 16; bits += 16;}
-  if (u >= (1 << 8)) {u >>= 8; bits += 8;}
-  if (u >= (1 << 4)) {u >>= 4; bits += 4;}
-  if (u >= (1 << 2)) {u >>= 2; bits += 2;}
-  if (u >= (1 << 1)) {u >>= 1; bits += 1;}
-  return bits;
+  int b16, b8, b4, b2, b1, b0;
+  int sign = x >> 31;
+
+  x = x ^ sign;
+
+  b16 = !!(x >> 16) << 4;
+  x = x >> b16; 
+
+  b8 = !!(x >> 8) << 3;
+  x = x >> b8;
+
+  b4 = !!(x >> 4) << 2;
+  x = x >> b4;
+
+  b2 = !!(x >> 2) << 1;
+  x = x >> b2;
+
+  b1 = !!(x >> 1);
+  x = x >> b1;
+
+  b0 = x;
+  return b16 + b8 + b4 + b2 + b1 + b0 + 1;
 }
+
 //float
 /* 
  * floatScale2 - Return bit-level equivalent of expression 2*f for
@@ -286,16 +304,12 @@ int howManyBits(int x) {
  *   Max ops: 30
  *   Rating: 4
  */
+
 unsigned floatScale2(unsigned uf) {
-  unsigned u = (unsigned) 2 * uf;
-  int bits = 0;
-  if (u >= (1 << 16)) { u >>= 16; bits += 16;}
-  if (u >= (1 << 8)) {u >>= 8; bits += 8;}
-  if (u >= (1 << 4)) {u >>= 4; bits += 4;}
-  if (u >= (1 << 2)) {u >>= 2; bits += 2;}
-  if (u >= (1 << 1)) {u >>= 1; bits += 1;}
-  return bits;
+  
+  return 2;
 }
+
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
  *   for floating point argument f.
@@ -327,5 +341,5 @@ int floatFloat2Int(unsigned uf) {
  */
 unsigned floatPower2(int x) {
 
-    return 2;
+  return 2;
 }
