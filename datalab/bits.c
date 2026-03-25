@@ -213,8 +213,9 @@ int negate(int x) {
 // 0011 1001
 // 0011 0000
 int isAsciiDigit(int x) {
-                 
-  return 2;
+  int low = (x + ~0x30 + 1) >> 31; // low表示x - 0x2f > 0 low > 0 当low >  0时,low 为0否则为-1
+  int high = (~x + 0x39 + 1) >> 31;// high 表示0x3a - x > 0 high > 0
+  return !!(~low) & !!(~high);
 }
 
 /* 
@@ -224,10 +225,12 @@ int isAsciiDigit(int x) {
  *   Max ops: 16
  *   Rating: 3
  */
+
 int conditional(int x, int y, int z) {
   x = !!x;
   return (~((x + ~1 + 1) | ~y)) | ((x + ~1 + 1) & z);
 }
+
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
  *   Example: isLessOrEqual(4,5) = 1.
@@ -235,9 +238,19 @@ int conditional(int x, int y, int z) {
  *   Max ops: 24
  *   Rating: 3
  */
+// x - y <= 0
+// x - y - 1 < 0
+
 int isLessOrEqual(int x, int y) {
-  int p = x + ~y; 
-  return !(p >> 31);
+  int signX = (x >> 31) & 1;
+  int signY = (y >> 31) & 1;
+
+  int diffSigns = signX ^ signY;
+
+  int diff = y + ~x + 1;
+  int signDiff = (diff >> 31) & 1;
+  
+  return (diffSigns & signX) | ((!diffSigns) & (!signDiff));
 }
 //4
 /* 
@@ -248,10 +261,9 @@ int isLessOrEqual(int x, int y) {
  *   Max ops: 12
  *   Rating: 4 
  */
-
+//  1 1 1 1 -> 0     0 0 0 0 -> 1   
 int logicalNeg(int x) {
-  
-  return 2;
+  return ((x | (~x + 1))  >> 31)  + 1;
 }
 
 /* howManyBits - return the minimum number of bits required to represent x in
@@ -306,8 +318,30 @@ int howManyBits(int x) {
  */
 
 unsigned floatScale2(unsigned uf) {
-  
-  return 2;
+  unsigned sign = 0x80000000 & uf;
+  unsigned exp = 0x7f800000 & uf;
+  unsigned frac = 0x007fffff & uf;
+
+  if (exp == 0x7f800000) {
+    return uf;
+  }
+
+  if (exp == 0) {
+    frac <<= 1;
+
+    if(frac & 0x00800000) {
+      exp = 0x00800000;
+      frac &= 0x007fffff; 
+    }
+
+    return sign | exp | frac;
+  }
+
+  exp += 0x00800000;
+  if(exp == 0x7f800000) {
+    frac = 0;
+  }
+  return sign | exp | frac;
 }
 
 /* 
@@ -323,8 +357,35 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
+  unsigned sign = uf >> 31;
+  unsigned exp = (uf >> 23) & 0xFF;
+  unsigned frac = uf & 0x7FFFFF;
 
-  return 2;
+  if (exp == 0xFF) return 0x80000000u;
+
+  if (exp == 0) return 0;
+  
+  int E = exp - 127;
+
+  if (E < 0) return 0;
+
+  unsigned M = frac | 0x800000;
+
+  if (E > 23) {
+      if (E > 30) return 0x80000000u;
+      M = M << (E - 23);
+  } else {
+      M = M >> (23 - E);
+  }
+
+  if (sign) {
+      if (M > 0x80000000u) return 0x80000000u;
+      if (M == 0x80000000u) return 0x80000000u;
+      return -((int)M);
+  } else {
+      if (M > 0x7FFFFFFF) return 0x80000000u;
+      return M;
+    }
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -340,6 +401,18 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-
-  return 2;
+  if (x > 127) {
+        return 0x7F800000;
+    }
+    // Too small: underflow to 0
+    if (x < -149) {
+        return 0;
+    }
+    // Normalized case: -126 <= x <= 127
+    if (x >= -126) {
+        int exp = x + 127;
+        return exp << 23;
+    }
+    int shift = x + 149;
+    return 1U << shift;
 }
